@@ -8,7 +8,6 @@ PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-from rag.rag_answer import rag_answer
 from inference import predict
 
 # 基础版本：地点 -> 简介
@@ -65,6 +64,8 @@ def pipeline(image):
 def chat(query, location):
     """基于 RAG 的提问接口。"""
     try:
+        from rag.rag_answer import rag_answer
+
         q = f"关于阳光学院的 {location}：{query}"
         answer = rag_answer(q)
         return f"🤖 AI 回答\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n{answer}"

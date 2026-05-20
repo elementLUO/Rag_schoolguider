@@ -1,9 +1,58 @@
 import json
+import os
+import sys
+
+
+def _prepare_torch_dll_env():
+    """Ensure Windows loads PyTorch dependencies from the active conda env first."""
+    if os.name != "nt":
+        return
+
+    def _looks_like_external_cuda(path):
+        normalized = os.path.normcase(path.replace("/", "\\"))
+        cuda_markers = (
+            "\\cuda\\",
+            "\\cuda11.",
+            "\\cuda12.",
+            "\\libnvvp",
+        )
+        return any(marker in normalized for marker in cuda_markers)
+
+    env_root = os.path.dirname(sys.executable)
+    env_root_norm = os.path.normcase(env_root)
+    preferred_paths = [
+        env_root,
+        os.path.join(env_root, "Library", "bin"),
+        os.path.join(env_root, "Scripts"),
+        os.path.join(env_root, "Lib", "site-packages", "torch", "lib"),
+    ]
+    preferred_paths = [path for path in preferred_paths if os.path.isdir(path)]
+
+    current_paths = [path for path in os.environ.get("PATH", "").split(os.pathsep) if path]
+    preferred_norms = {os.path.normcase(path) for path in preferred_paths}
+    remaining_paths = [
+        path
+        for path in current_paths
+        if os.path.normcase(path) not in preferred_norms
+        and not (
+            _looks_like_external_cuda(path)
+            and not os.path.normcase(path).startswith(env_root_norm)
+        )
+    ]
+    os.environ["PATH"] = os.pathsep.join(preferred_paths + remaining_paths)
+
+    if hasattr(os, "add_dll_directory"):
+        for dll_dir in preferred_paths:
+            try:
+                os.add_dll_directory(dll_dir)
+            except OSError:
+                pass
+
+_prepare_torch_dll_env()
 import torch
 import torchvision.transforms as transforms
 from torchvision import models
 from PIL import Image
-import os
 
 # 定义地点中文简介字典，避免循环导入
 LOCATION_INTRO = {
